@@ -12,10 +12,13 @@ from pathlib import PurePosixPath, _PosixFlavour
 from six import string_types, text_type, b
 import collections
 import logging
+import textwrap
 
 from pygments import highlight
 from pygments.lexers import JsonLexer
 from pygments.formatters import Terminal256Formatter
+
+from prettytable import PrettyTable
 
 from prompt_toolkit.shortcuts import prompt, create_eventloop
 
@@ -333,6 +336,80 @@ def format_table(rows, sep='  '):
         ])
         formated_rows.append(format_str.format(*row))
     return '\n'.join(formated_rows)
+
+
+def format_column(column, width, depth=0):
+    result = ""
+    if isinstance(column, list):
+        i = 0
+        item = "* "
+        for val in column:
+            if i == 0:
+                result += item + format_column(val, width, depth + 1) + "\n"
+            else:
+                result += "  " * depth + item + format_column(val, width, depth + 1) + "\n"
+            i = i + 1
+    elif isinstance(column, tuple):
+        i = 0
+        item = "- "
+        for val in column:
+            if i == 0:
+                result += item + format_column(val, width, depth + 1) + "\n"
+            else:
+                result += "  " * depth + item + format_column(val, width, depth + 1) + "\n"
+            i = i + 1
+    else:
+        result += "\n".join(textwrap.wrap(str(column), width))
+    return result
+
+
+def format_row(header, widths, row):
+    size = len(header)
+    result = []
+    for i in range(size):
+        fcell = format_column(row[i], widths[i])
+        result.append(fcell)
+    return result
+
+
+def format_table2(header, widths, data):
+    """ FormatTable2: return ascii table with delimitation and lines
+        wrapped.
+
+        Usage:
+
+        header = ["name", "age", "job", "bag"]
+        widths = [20, 4, 10, 40]
+        data = [["foo", 54, "policeman", ("pen", "knife", "glasses")],
+               ["bar", 28, "fireman", ("socket", "hat")],
+                       ["joe", 36, "anthropologist", ("computer", "keyboard")]]
+
+        format_table2(header, widths, data)
+
+        Return:
+
+        +------+-----+------------+------------+
+        | name | age | job        | bag        |
+        +------+-----+------------+------------+
+        | foo  | 54  | policeman  | - pen      |
+        |      |     |            | - knife    |
+        |      |     |            | - glasses  |
+        |      |     |            |            |
+        | bar  | 28  | fireman    | - socket   |
+        |      |     |            | - hat      |
+        |      |     |            |            |
+        | joe  | 36  | anthropolo | - computer |
+        |      |     | gist       | - keyboard |
+        |      |     |            |            |
+        +------+-----+------------+------------+
+    """
+    table = PrettyTable()
+    table.field_names = header
+    table.align = "l"
+    for row in data:
+        row = format_row(header, widths, row)
+        table.add_row(row)
+    return table
 
 
 def format_tree(tree):
